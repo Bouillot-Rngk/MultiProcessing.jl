@@ -13,7 +13,7 @@ Dir, dbList, estimatorList = MPTools.init()
 #                                    Skeletton                                      #
 #-----------------------------------------------------------------------------------#
 
-multiProcessP300([1,4],["SCM","TME"])
-bar(sort(meanA, rev=true), ylim=(0.5, 1))
+multiProcessP300([1],["SCM","TME","nrTME"])
+
                               Testing                                         #
 #-----------------------------------------------------------------------------------#

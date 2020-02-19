@@ -4,14 +4,22 @@ using DataFrames, CSV, Plots
 export plotResults,
       init
 
-function plotResults(fichierCsv)
+function plotResults(CSVFile)
 #-----------------------------------------------------------------------------------#
-#Traitement des donnees recuperees lors de multiProcessP300 pour analyse
+#Formatting the data from output_finished.csv file (result of multiProcessP300)
+#and creating plots and saving figure for data analysis
 #-----------------------------------------------------------------------------------#
+#Input :
+#     CSVFile::CSVFile result of multiProcessP300
+#Output :
+#     splitted::Vector{DataFrame} which contained one DataFrame per covariance estimator and database
+#           used in multiProcessP300
+#     To implement => computing of length(splitted) plots saved into data/ folder with appropriate name
+
 
       ~, dbList, estimatorList = init()
 
-      tot = DataFrame(CSV.File(fichierCsv))
+      tot = DataFrame(CSV.File(CSVFile))
       v = Vector{DataFrame}()
       for (i, base) ∈ enumerate(dbList)
             b = tot[in.(tot.Database, Ref([base])), :]
@@ -29,6 +37,7 @@ function plotResults(fichierCsv)
             end
       end
 
+      #WIP : Computing and saving plots
       for i=1:length(splitted)
             meanA = splitted[i][!, :meanA]
             bar(sort(meanA, rev=true), ylim=(0.5, 1))
@@ -38,6 +47,9 @@ function plotResults(fichierCsv)
 end
 
 function getDBList()
+#-----------------------------------------------------------------------------------#
+#Get the list of database in the folder "Dir" (private function)
+#-----------------------------------------------------------------------------------#
       Dir = getDir()
       dbList = readdir(Dir*"/P300")
       filter!(e->e∉[".DS_Store","._.DS_Store"],dbList)
@@ -45,14 +57,24 @@ function getDBList()
 end
 
 function getDir()
+#-----------------------------------------------------------------------------------#
+#Get the Dir directory where database are stored (must be update) (private function)
+#-----------------------------------------------------------------------------------#
       return Dir = homedir()*"/Documents/My Data/EEG data/npz"
 end
 
 function getEstimatorList()
+#-----------------------------------------------------------------------------------#
+#Get the list of available estimator (must be update if a new estimator is available)
+#(private function)
+#-----------------------------------------------------------------------------------#
       return estimatorList = ["SCM","TME","nrTME"]
 end
 
 function init()
+#-----------------------------------------------------------------------------------#
+#Get useful var to start the multiprocessing 
+#-----------------------------------------------------------------------------------#
       Dir = getDir()
       dbList = getDBList()
       estimatorList = getEstimatorList()

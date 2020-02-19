@@ -14,19 +14,17 @@ export
 
 
 
-#Charger une base
 function loadDBP300(dbName)
 #-----------------------------------------------------------------------------------#
-#Permet de charger une base de donnees rapidement en utilisant uniquement le numero
-#de la base (ordre alphabetique), ou en donnant directement son nom
+#Load a npz database using the name of the database or the index in the dbList (see MPTools)
+#corresponding to the alphabetical position in the folder
 #-----------------------------------------------------------------------------------#
 #Input :
-#     dbName::String || Int
+#     dbName::String or Int
 #Output :
 #     files::Vector{String} with N elements
-      dbList = ["BI.EEG.2012-GIPSA","BI.EEG.2013-GIPSA","BI.EEG.2014a-GIPSA",
-            "BI.EEG.2015a-GIPSA","BNCI2014008","BNCI2014009","BNCI2015003","EPFLP300"]
-      Dir = homedir()*"/Documents/My Data/EEG data/npz"
+
+      Dir, dbList, t = MPTools.init()
 
       if dbName isa String && dbName in dbList
             dbSearch = Dir*"/P300/"*dbName;
@@ -42,21 +40,19 @@ function loadDBP300(dbName)
       end
 end #loadDBP300
 
-function processDBP300(dbName)
+function processDBP300(dbName) #obsolete
 #-----------------------------------------------------------------------------------#
-#Permet de charger une base de donnees rapidement en utilisant uniquement le numero
-#de la base (ordre alphabetique), ou en donnant directement son nom
+#Process 1 database with one specific method that need to be written in Estimators.jl
+#and function must be modified according to the wanted covariance estimator
 #-----------------------------------------------------------------------------------#
 #Input :
-#     dbLoaded => Vector{String} issu de loadDBP300
+#     dbName::String or Int
 #Output :
-#     meanA
-#     sdA
+#     meanA  mean computed by crossvalidatin
+#     sdA    standart deviation computed by cross validation
 
 
-dbList = ["BI.EEG.2012-GIPSA","BI.EEG.2013-GIPSA","BI.EEG.2014a-GIPSA",
-      "BI.EEG.2015a-GIPSA","BNCI2014008","BNCI2014009","BNCI2015003","EPFLP300"]
-Dir = homedir()*"/Documents/My Data/EEG data/npz"
+      Dir, dbList, t = MPTools.init()
 
 
 files = loadDBP300(dbName)
@@ -84,39 +80,52 @@ end #processData
 
 function multiProcessP300(databases,estimators)::Bool
 #-----------------------------------------------------------------------------------#
-#Traitements de differentes bases de donnees avec differents estimateurs.
-#Recuperation des donnees dans un csv.
+#Processing of length(databases) databases with length(estimators) covariance estimator
+#The if-elseif must be update when a new estimator function is available
+#Return a csv file with all meanA, sdA and time computed whilst crossvalidation that
+#can be read and treated with MPTools.plotResults() function
 #-----------------------------------------------------------------------------------#
+#Input :
+#     databases::Vector{String} containing names or index of to-be-processed DB
+#     estimators::Vector{String} comtaining names of covariance estimator to be tested
+#             The list of DB and estimators available is described in MPTools.jl
+#Output :
+#     bool::Bool = true if processing is successfully complete
+#     output_finished.csv::CSV File stored in data/ folder
+#     output.csv in data/ folder is a backup in case of any kind of crash during computing
 
-#Variables utiles /!\ Comment eviter la demultiplication des inits de ces variables ?
-#Functiom getdbList ? et getDir ? => a essayer
 Dir, dbList, estimatorList = MPTools.init()
 donnees = DataFrame(meanA = Float64[], sdA = Float64[], Time = DateTime[],
       Method = String[], Database = String[], Sujet_Session_Run = String[])
 
-#Verifier que tout va bien
+#Maybe check if inputs are correct before launching code ?
 
 for (k,base) ∈ enumerate(databases)
-      #affichage dans le REPL pour controle
-
-      #chargement de la base
+      #loading of 1 database
       files = loadDBP300(base)
+
+      #Memory allocation
       meanA=Vector{Float64}(undef, length(files)); sdA = similar(meanA)
 
+      #display in REPL for control => used base and number of elements
       if typeof(base)==Int print("base ",dbList[base], "  w/ ", length(files)," elements \n"); base=dbList[base]
       else print("base", base, "  w/ ", length(files)," elements \n")
       end #end if
 
-      #Choix de la methode  => Fonctionne
-      for (j,method) ∈ enumerate(estimators)
+      #Choice of covariance estimator
+      @threads for (j,method) ∈ enumerate(estimators)
+            #REPL Display for control
             print("Methode ",method, "\n")
-            count = 0
+            count = 0 #var used for output.csv (back up csv)
+
+            #Data processing
             for (i, file) ∈ enumerate(files)
                   o=readNY(file; bandpass=(1, 16)) # read files and create the o structure
                   print(method, " ")
                   print(rpad("$i.", 4), rpad("sj: $(o.subject), ss: $(o.session), run $(o.run): ", 26));
                   ⌚ = now()
 
+                  #Choice of covariance estimator => is there any way to make it more flexible/optimized  ?
                   if method == "SCM"
                         Clw = SCMP300(o)
 
@@ -127,37 +136,37 @@ for (k,base) ∈ enumerate(databases)
                         Clw = nrTMEP300(o)
                   else print("Estimator doesn't exist"); break
 
-                  end #switch
+                  end #switch-case
 
+                  #beginning of crossvalidation
                   args=(shuffle=false, tol=1e-6, verbose=false)
                   cvlw = cvAcc(ENLR(Fisher), Clw, o.y; args...)
 
                   meanA[i] = cvlw.avgAcc
                   sdA[i] = cvlw.stdAcc
                   time = now()-⌚
+                  #REPL Display for control
                   println(rpad(round(meanA[i]; digits=4), 6), " (", rpad(round(sdA[i]; digits=4), 6), ") done in ", time)
 
+                  #Datastorage
                   data = [cvlw.avgAcc, cvlw.stdAcc, time, method, base,
                         rpad("sj: $(o.subject), ss: $(o.session), run $(o.run): ", 26) ]
                   push!(donnees,data)
                   count += 1
+                  #Back up csv
                   if rem(count,3) == 0
                         CSV.write("data/output.csv",donnees)
                   end
 
             end #for file
-            #Recup des meanA et sdA pour ecriture dans csv
-            #Format de csv :
-
-
       end #for method
-      #bar(sort(meanA, rev=true), ylim=(0.5, 1))
-      #waste(files)
 end #for database
+
 print("Finished")
+#Data recuperation (readable with MPTools.plotResults())
 CSV.write("data/output_finished.csv", donnees)
 end
 
-return bool = true
+return bool = true 
 
 end #module
