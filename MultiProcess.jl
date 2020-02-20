@@ -1,6 +1,7 @@
-
-
 push!(LOAD_PATH, joinpath(@__DIR__, "src"))
+#Resolving usual issues on launch
+#Pkg.build(Rmath)
+#Pkg.build(GLMnet)
 
 using LinearAlgebra, PosDefManifold, PosDefManifoldML, CovarianceEstimation,
       Dates, Distributions, PDMats, Revise, BenchmarkTools, Plots, GR
@@ -13,7 +14,4 @@ Dir, dbList, estimatorList = MPTools.init()
 #                                    Skeletton                                      #
 #-----------------------------------------------------------------------------------#
 
-multiProcessP300([1],["SCM","TME","nrTME"])
-
-                              Testing                                         #
-#-----------------------------------------------------------------------------------#
+multiProcessP300([1],["Wolf"])

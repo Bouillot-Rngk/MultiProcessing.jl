@@ -113,19 +113,21 @@ for (k,base) ∈ enumerate(databases)
       end #end if
 
       #Choice of covariance estimator
-      @threads for (j,method) ∈ enumerate(estimators)
+      for (j,method) ∈ enumerate(estimators)
             #REPL Display for control
             print("Methode ",method, "\n")
             count = 0 #var used for output.csv (back up csv)
 
             #Data processing
             for (i, file) ∈ enumerate(files)
+
                   o=readNY(file; bandpass=(1, 16)) # read files and create the o structure
                   print(method, " ")
-                  print(rpad("$i.", 4), rpad("sj: $(o.subject), ss: $(o.session), run $(o.run): ", 26));
+                  print(rpad("$i.", 4), "/",length(files), " ", rpad("sj: $(o.subject), ss: $(o.session), run $(o.run): ", 26));
                   ⌚ = now()
 
                   #Choice of covariance estimator => is there any way to make it more flexible/optimized  ?
+
                   if method == "SCM"
                         Clw = SCMP300(o)
 
@@ -134,9 +136,14 @@ for (k,base) ∈ enumerate(databases)
 
                   elseif method == "nrTME"
                         Clw = nrTMEP300(o)
+
+                  elseif method == "Wolf"
+                        Clw = Wolf(o)
+
                   else print("Estimator doesn't exist"); break
 
                   end #switch-case
+
 
                   #beginning of crossvalidation
                   args=(shuffle=false, tol=1e-6, verbose=false)
@@ -144,6 +151,8 @@ for (k,base) ∈ enumerate(databases)
 
                   meanA[i] = cvlw.avgAcc
                   sdA[i] = cvlw.stdAcc
+
+
                   time = now()-⌚
                   #REPL Display for control
                   println(rpad(round(meanA[i]; digits=4), 6), " (", rpad(round(sdA[i]; digits=4), 6), ") done in ", time)
@@ -151,11 +160,12 @@ for (k,base) ∈ enumerate(databases)
                   #Datastorage
                   data = [cvlw.avgAcc, cvlw.stdAcc, time, method, base,
                         rpad("sj: $(o.subject), ss: $(o.session), run $(o.run): ", 26) ]
+
                   push!(donnees,data)
                   count += 1
                   #Back up csv
-                  if rem(count,3) == 0
-                        CSV.write("data/output.csv",donnees)
+                  if rem(count,3) == 0 || count==length(files)
+                        CSV.write("Julia/MultiProcessing.jl/data/output-ssh.csv",donnees)
                   end
 
             end #for file
@@ -164,9 +174,9 @@ end #for database
 
 print("Finished")
 #Data recuperation (readable with MPTools.plotResults())
-CSV.write("data/output_finished.csv", donnees)
+CSV.write("Julia/MultiProcessing.jl/data/output_finished-ssh.csv", donnees)
 end
 
-return bool = true 
+
 
 end #module
