@@ -14,4 +14,4 @@ Dir, dbList, estimatorList = MPTools.init()
 #                                    Skeletton                                      #
 #-----------------------------------------------------------------------------------#
 
-multiProcessP300([1],["Wolf"])
+multiProcessP300([4],["SCM"],"ssh1")

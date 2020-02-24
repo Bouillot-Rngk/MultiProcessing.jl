@@ -1,0 +1,64 @@
+Base 2012 :
+  Avec Regularization, sans normalization : #in output_B1_nonorm
+      Wolf :
+      TME : Check
+      nrTme : Check
+      SCM :Check
+
+  Avec regularization, avec normalization : #in output_B1_norm
+    Wolf : Check
+    TME : Check
+    nrTME : Check
+    SCM : Check
+
+Base 2013 :
+  Avec Regularization, sans normalization :
+      Wolf : Crash
+      TME :
+      nrTme :
+      SCM :  Crash
+
+  Avec regularization, avec normalization :
+    Wolf : Crash
+    TME :
+    nrTME :
+    SCM : Crash
+
+Base 2014a :
+  Avec Regularization, sans normalization :
+      Wolf :
+      TME :
+      nrTme :
+      SCM :
+
+  Avec regularization, avec normalization : #in output-ssh_WolfSCM
+    Wolf : Check
+    TME :
+    nrTME :
+    SCM : Crash a mi chemin
+
+Base 2015a : CRASH
+  Avec Regularization, sans normalization :
+      Wolf :
+      TME :
+      nrTme :
+      SCM :
+
+  Avec regularization, avec normalization : #in output-ssh_WolfSCM
+    Wolf : Check
+    TME :
+    nrTME :
+    SCM : Crash a mi chemin
+
+Base EPFLP300 :
+    Avec Regularization, sans normalization :
+        Wolf :
+        TME :
+        nrTme :
+        SCM :
+
+    Avec regularization, avec normalization : #in output-ssh2_Wolf
+      Wolf : Check
+      TME :
+      nrTME :
+      SCM : Crash
