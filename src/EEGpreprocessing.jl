@@ -11,7 +11,7 @@ import DSP:resample
 
 export
     standardizeEEG,
-    resample#,
+    resample
 
 # standardize the whole data in `X` using the winsor mean and std dev.
 # the winsor statistics are computed in module StatsBase excluding

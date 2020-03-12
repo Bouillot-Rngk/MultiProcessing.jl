@@ -83,12 +83,17 @@ function loadNYdb(dbDir=AbstractString)
   return npzFiles
 end
 
+####
+
 function loadNYdbCS(BDir=String)
   # create a list of all .npz files found in dbDir to complete Cross Session TL (complete path)
   DirCS=BDir*"/Sujet1/Base1"
   npzFiles = loadNYdb(DirCS)
   return npzFiles
 end
+
+####
+
 
 # Read EEG data in NY (npz, yml) format and create an `EEE` structure.
 # The complete path of the file given by `filename`.
@@ -99,6 +104,122 @@ end
 # will upsample by 3. NB: resampling is still experimental.
 # If `getTrials` is true, the `trials` field of the `EEG` structure is filled.
 # If `msg` is not empty, print `msg` on exit.
+function readNYArtifact(filename  :: AbstractString;
+                bandpass  :: Tuple=(),
+                resample  :: Union{Rational, Int}=1,
+                getTrials :: Bool=true,
+                msg       :: String="")
+
+  data = npzread(splitext(filename)[1]*".npz") # read data file
+  info = YAML.load(open(splitext(filename)[1]*".yml")) # read info file
+
+  sr      = info["acquisition"]["samplingrate"]
+  stim    = data["stim"]                  # stimulations
+  (ns, ne)= size(data["data"])            # of sample, # of electrodes)
+  os      = info["stim"]["offset"]        # offset for trial starting sample
+  wl      = info["stim"]["windowlength"]  # trial duration
+  nc      = info["stim"]["nclasses"]      # of classes
+
+  # band-pass the data if requested
+  if isempty(bandpass)
+    X=data["data"]
+  else
+    BPfilter = digitalfilter(Bandpass(first(bandpass)/(sr/2), last(bandpass)/(sr/2)), Butterworth(2))
+    X        = filtfilt(BPfilter, data["data"])
+  end
+
+  # resample data if requested
+  if resample≠1
+    X         = resample(X, resample; stim=stim)
+    (ns, ne)  = size(X)
+    wl        = round(Int, wl*resample)
+    os        = round(Int, os*resample)
+    sr        = round(Int, sr*resample)
+    wl        = round(Int, wl*resample)
+  end
+
+  # vectors of samples where the trials start for each class 1, 2,...
+
+  gfp=[x⋅x for x ∈ eachrow(o.X)]
+
+  #Calcul du gfp + tri dans un DataFrame pour conserver l'ordre
+  lsgfp=log10.(gfp)
+  Plots.plot(lsgfp)
+  x = 1:length(lsgfp)
+  data=DataFrame(X = x, GFP = lsgfp, Deriv = missing)
+  datasorted = sort!(data, [:GFP, :X])
+  Plots.plot(datasorted[!, :GFP])
+
+
+  #Calcul de la derivée
+  derivative = Vector{Float64}(undef,length(lsgfp))
+  for x0 = 31:length(lsgfp)-30
+    moy=Vector{Float64}(undef,29)
+    for wl = 2:30
+        moy[wl-1] = (datasorted[!, :GFP][x0+wl] - datasorted[!, :GFP][x0-wl])/(2*wl)
+    end
+    mean = Statistics.mean(moy)
+    derivative[x0] = mean
+  end
+  for i=1:length(derivative)
+    if derivative[i]<0.0000000000001 derivative[i] = 0 ; end
+  end
+  deriv = Statistics.mean(derivative)
+  Scalederivative = derivative/deriv
+  Plots.plot(Scalederivative)
+  for i=length(derivative)-50:length(derivative)
+    Scalederivative[i] = 30
+  end
+  datasorted.Deriv = Scalederivative
+  dataArtifact = datasorted[1000:end,  :]
+
+  dataArtifact = dataArtifact[dataArtifact.Deriv .> 15, :]
+  Plots.plot(dataArtifact[!, :GFP])
+  indexArtif = copy(dataArtifact)
+  indexArtif = sort!(indexArtif, :X)
+  Plots.plot(indexArtif[!, :GFP])
+
+  stimArtifact = deleteat!(o.stim, indexArtif[!, :X])
+
+  ns,ne = size(stimArtifact)
+
+  cstim=[[i+os for i in eachindex(stimArtifact) if stimArtifact[i]==j && i+os+wl<=ns] for j=1:nc]
+
+  getTrials ?  trials=[X[cstim[i][j]:cstim[i][j]+wl-1,:] for i=1:nc for j=1:length(cstim[i])] :
+                trials=nothing
+
+
+  if !isempty(msg) println(msg) end
+
+  # this creates the `EEG` structure
+  EEG(
+     info["id"],
+     info["acquisition"],
+     info["documentation"],
+     info["formatversion"],
+
+     info["id"]["database"],
+     info["id"]["subject"],
+     info["id"]["session"],
+     info["id"]["run"],
+     info["acquisition"]["sensors"],
+     sr,
+     ne,
+     ns,
+     wl,
+     os, # trials offset
+     nc,
+     collect(keys(info["stim"]["labels"])), # clabels
+     stimArtifact,
+     cstim,
+     [i for i=1:nc for j=1:length(cstim[i])], # y: all labels
+     X, # whole EEG recording
+     trials # all trials, by class
+  )
+
+end
+
+####
 function readNY(filename  :: AbstractString;
                 bandpass  :: Tuple=(),
                 resample  :: Union{Rational, Int}=1,
@@ -134,10 +255,12 @@ function readNY(filename  :: AbstractString;
   end
 
   # vectors of samples where the trials start for each class 1, 2,...
+
   cstim=[[i+os for i in eachindex(stim) if stim[i]==j && i+os+wl<=ns] for j=1:nc]
 
-  getTrials ? trials=[X[cstim[i][j]:cstim[i][j]+wl-1,:] for i=1:nc for j=1:length(cstim[i])] :
-              trials=nothing
+  getTrials ?  trials=[X[cstim[i][j]:cstim[i][j]+wl-1,:] for i=1:nc for j=1:length(cstim[i])] :
+                trials=nothing
+
 
   if !isempty(msg) println(msg) end
 

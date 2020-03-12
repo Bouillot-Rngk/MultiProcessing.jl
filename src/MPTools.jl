@@ -18,7 +18,9 @@ function loadResults(CSVFile)
 
 ~, dbList, estimatorList = init()
 
+
 tot = DataFrame(CSV.File(CSVFile))
+estimList = unique(tot[!, :Method])
 v = Vector{DataFrame}()
 for (i, base) ∈ enumerate(dbList)
       b = tot[in.(tot.Database, Ref([base])), :]
@@ -28,7 +30,7 @@ end
 
 splitted = Vector{DataFrame}()
 for i = 1:length(v)
-      for (j,method) ∈ enumerate(estimatorList)
+      for (j,method) ∈ enumerate(estimList)
             m = v[i][in.(v[i].Method, Ref([method])), :]
             if isempty(m) == false
                   push!(splitted,m)
@@ -62,7 +64,7 @@ function plotResults(CSVFile)
             Met = splitted[k][!, :Method][1]
 
             Plots.bar(meanA, ylim=(0.5, 1))
-            Plots.savefig(savef*Base*"_"*Met*"_rege4_mean.png")
+            Plots.savefig(savef*Base*"_"*Met*"_regu_mean.png")
       end
 
       return splitted
@@ -90,7 +92,7 @@ function getEstimatorList()
 #Get the list of available estimator (must be update if a new estimator is available)
 #(private function)
 #-----------------------------------------------------------------------------------#
-      return estimatorList = ["SCM","TME","nrTME","Wolf"]
+      return estimatorList = ["SCM","TME","nrTME","Wolf","nrTMEFilt"]
 end
 
 function init()
