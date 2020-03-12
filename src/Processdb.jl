@@ -7,38 +7,9 @@ using EEGio, System, ERPs, Diagonalizations,
       DelphiApplications, Tyler, EEGtomography, Estimators,MPTools
 
 
-export
-      loadDBP300,
-      multiProcessCSV
+export multiProcessCSV
 
 
-
-
-function loadDBP300(dbName)
-      #-----------------------------------------------------------------------------------#
-      #Load a npz database using the name of the database or the index in the dbList (see MPTools)
-      #corresponding to the alphabetical position in the folder
-      #-----------------------------------------------------------------------------------#
-      #Input :
-      #     dbName::String or Int
-      #Output :
-      #     files::Vector{String} with N elements
-
-      Dir, dbList, t = MPTools.init()
-
-      if dbName isa String && dbName in dbList
-            dbSearch = Dir*"/P300/"*dbName;
-      end
-      if dbName isa Int
-            dbSearch = Dir*"/P300/"*dbList[dbName];
-      end
-      try
-            files = loadNYdb(dbSearch)
-            return files
-      catch e
-            println("Base de donnees inexistante");
-      end
-end #loadDBP300
 
 
 

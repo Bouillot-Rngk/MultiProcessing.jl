@@ -3,7 +3,70 @@ using DataFrames, CSV, Plots
 
 export plotResults,
       loadResults,
-      init
+      init,
+      loadDBP300,
+      loadDBTVA
+
+
+
+function loadDBP300(dbName)
+      #-----------------------------------------------------------------------------------#
+      #Load a npz database using the name of the database or the index in the dbList (see MPTools)
+      #corresponding to the alphabetical position in the folder
+      #-----------------------------------------------------------------------------------#
+      #Input :
+      #     dbName::String or Int
+      #Output :
+      #     files::Vector{String} with N elements
+
+      Dir, dbList, t = MPTools.init()
+
+      if dbName isa String && dbName in dbList
+            dbSearch = Dir*"/P300/"*dbName;
+      end
+      if dbName isa Int
+            dbSearch = Dir*"/P300/"*dbList[dbName];
+      end
+      try
+            files = loadNYdb(dbSearch)
+            return files
+      catch e
+            println("Base de donnees inexistante");
+      end
+end #loadDBP300
+
+
+function loadDBTVA(db)
+      #-----------------------------------------------------------------------------------#
+      #Load a npz database using the name of the database or the index in the dbList (see MPTools)
+      #corresponding to the alphabetical position in the folder
+      #-----------------------------------------------------------------------------------#
+      #Input :
+      #     dbName::String or Int
+      #Output :
+      #     files::Vector{String} with N elements
+
+      Dir, dbList, t = MPTools.init()
+
+      Dir = homedir()*"/Documents/My Data/EEG data/npz/BI.EEG.2013-Sorted"
+      sub = ["/Sujet1","/Sujet2"]
+      dbList = [readdir(Dir*s) for s ∈ sub]
+      filter!(e->e∉[".DS_Store","._.DS_Store"],dbList)
+
+      if db isa String && db in dbList  #To load a specific session dbname = "1-session1"
+            dbSearch = Dir*"/Sujet"*dbName[first]*"/"*dbName*"/"
+      end
+      if db isa Int #to load a complete base : dbName = 1 will load Base 1
+            dbSearch = Dir*"/Sujet$db/Base$db/"
+      end
+      try
+            files = loadNYdb(dbSearch)
+            return files
+      catch e
+            println("Base de donnees inexistante")
+      end
+
+end #loadDBPTVA
 
 
 function loadResults(CSVFile)
